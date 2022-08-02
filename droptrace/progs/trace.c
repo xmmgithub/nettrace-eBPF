@@ -4,12 +4,14 @@ SEC("tp_btf/kfree_skb")
 int BPF_PROG(trace_kfree_skb, struct sk_buff *skb, void *location,
 	     int reason)
 {
-	if (PARAM_CHECK_BOOL(snmp_mode)) {
+	ARGS_INIT();
+
+	if (ARGS_GET(snmp_mode)) {
 		do_snmp(reason);
 		goto out;
 	}
 
-	if (PARAM_CHECK_ENABLE(reason, reason))
+	if (ARGS_CHECK(reason, reason))
 		goto out;
 
 	event_t event = { .reason = reason };
@@ -17,7 +19,7 @@ int BPF_PROG(trace_kfree_skb, struct sk_buff *skb, void *location,
 		goto out;
 
 	event.pkt.ts = bpf_ktime_get_ns();
-	if (PARAM_ENABLED(limit) && is_limited(event.pkt.ts))
+	if (ARGS_ENABLED(limit) && is_limited(event.pkt.ts))
 		goto out;
 
 	event.location = (u64)location;

@@ -6,15 +6,9 @@
 
 #include "shared.h"
 
-PARAM_DEFINE_UINT(u16, reason);
-PARAM_DEFINE_UINT(u32, limit);
-PARAM_DEFINE_UINT(u32, limit_bucket);
-
-PARAM_DEFINE_BOOL(snmp_mode, false);
-
-u32 snmp_reasons[SKB_DROP_REASON_MAX];
-int current_budget = 1024;
-u64 last_ts = 0;
+bpf_args_t _bpf_args = {
+	.current_budget = 1024
+};
 
 struct kfree_skb_args {
 	u64 pad;
@@ -28,21 +22,23 @@ static inline void do_snmp(int reason)
 {
 	if (reason >= SKB_DROP_REASON_MAX || reason < 0)
 		return;
-	snmp_reasons[reason]++;
+	_bpf_args.snmp_reasons[reason]++;
 }
 
 static __always_inline bool is_limited(u64 ts)
 {
-	if (current_budget) {
-		current_budget--;
+	ARGS_INIT();
+
+	if (_bpf_args.current_budget) {
+		_bpf_args.current_budget--;
 		return false;
 	}
 
-	u64 dela = ((ts - last_ts) / 1000) * arg_limit / 1000000;
+	u64 dela = ((ts - _bpf_args.last_ts) / 1000) * bpf_args->limit / 1000000;
 	if (dela) {
-		if (dela > arg_limit_bucket)
-			dela = arg_limit_bucket;
-		current_budget = dela - 1;
+		if (dela > bpf_args->limit_bucket)
+			dela = bpf_args->limit_bucket;
+		_bpf_args.current_budget = dela - 1;
 		return false;
 	}
 	return true;
