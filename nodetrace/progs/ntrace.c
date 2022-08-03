@@ -5,10 +5,13 @@
 #include <macro.h>
 #include <skb_utils.h>
 
-#include "bpf.h"
+#include "shared.h"
 
 #define MARK_TOS_VALUE	0xe0
-PARAM_DEFINE_BOOL(quiet, true);
+
+bpf_args_t _bpf_args = {
+	.quiet = true
+};
 
 static inline void do_mark(struct __sk_buff *skb, struct iphdr *ip)
 {
@@ -52,11 +55,11 @@ int ntrace_mark(struct __sk_buff *skb)
 		goto out;
 	}
 
-	if (direct_parse_skb(skb, &event.pkt, true))
+	if (direct_parse_skb(skb, &event.pkt, &_bpf_args.pkt))
 		goto out;
 
 	do_mark(skb, ip);
-	if (!PARAM_CHECK_BOOL(quiet))
+	if (!_bpf_args.quiet)
 		EVENT_OUTPUT(skb, event);
 
 	return TC_ACT_OK;
@@ -88,7 +91,7 @@ static inline void try_output_skb(struct __sk_buff *skb, __u8 location)
 		return;
 
 	ip = SKB_HDR_IP(skb);
-	if (!is_marked(ip) || direct_parse_skb(skb, &event.pkt, false))
+	if (!is_marked(ip) || direct_parse_skb(skb, &event.pkt, NULL))
 		return;
 
 	EVENT_OUTPUT(skb, event);
