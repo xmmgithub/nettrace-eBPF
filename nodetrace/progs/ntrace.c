@@ -3,9 +3,8 @@
 #include <bpf_endian.h>
 
 #include <macro.h>
-#include <skb_utils.h>
-
 #include "shared.h"
+#include <skb_utils.h>
 
 #define MARK_TOS_VALUE	0xe0
 
